@@ -8,6 +8,10 @@ Maybe maybe maybe something something JIRA.
 
 ```json
 {
+  "JIRA": {
+    "URL": "",
+    "EpicCustomFieldID": ""
+  },
   "OAuth": {
     "Token": "",
     "Secret": "",
@@ -21,6 +25,6 @@ Maybe maybe maybe something something JIRA.
 ## Usage
 
 ```console
-$ go run ./cmd/viz <EPIC KEY>
+$ go run cmd/viz/*go <EPIC KEY> | dot -Tsvg > out.svg
 ...
 ```

@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/andygrunwald/go-jira"
+	"github.com/emicklei/dot"
 	"github.com/freeformz/jeera/cmd/internal/config"
 )
 
@@ -36,6 +37,10 @@ func projectForIssue(key string) (string, error) {
 }
 
 func main() {
+	url, err := config.JiraURL()
+	if err != nil {
+		log.Fatal(err)
+	}
 	client, err := jiraClient()
 	if err != nil {
 		log.Fatal("setting up jira client:", err)
@@ -45,11 +50,9 @@ func main() {
 	}
 
 	ek := os.Args[1]
-	p, err := projectForIssue(ek)
-	if err != nil {
+	if _, err := projectForIssue(ek); err != nil {
 		log.Fatal(err)
 	}
-	projects := make(map[string][]*jira.Issue)
 
 	cfID, err := config.JiraCustomEpicFieldID()
 	if err != nil {
@@ -64,35 +67,22 @@ func main() {
 	if e.Fields.Type.Name != "Epic" {
 		log.Fatal("Issue " + ek + "is not an epic")
 	}
-
-	projects[p] = []*jira.Issue{e}
+	eg := dot.NewGraph(dot.Directed).
+		Label(ek + " Graph")
+	eg.Attr("rankdir", "LR")
+	eg.Attr("labelloc", "t")
+	//eg.Attr("clusterrank", "local")
 
 	is, _, err := client.Issue.Search("cf["+cfID+"]="+ek, nil)
 	if err != nil {
 		log.Fatal("searching for epic stories:", err)
 	}
 	for _, i := range is {
-		p, err := projectForIssue(i.Key)
+		_, err := addToGraph(eg, &i, url)
 		if err != nil {
-			log.Fatalf("determining project for issue %s in epic %s: %s", i.Key, ek, err.Error())
-		}
-		issues, ok := projects[p]
-		if !ok {
-			issues = []*jira.Issue{&i}
-			projects[p] = issues
-		}
-		fmt.Println(i.Key, i.Fields.Status.Name)
-	}
-
-	for _, l := range e.Fields.IssueLinks {
-		if l.OutwardIssue != nil {
-			fmt.Println("->", l.OutwardIssue.Key)
-		}
-		if l.InwardIssue != nil {
-			fmt.Println("<-", l.InwardIssue.Key)
+			log.Fatal(err)
 		}
 	}
 
-	fmt.Println("graph {")
-
+	fmt.Println(eg.String())
 }
